@@ -1,0 +1,26 @@
+name: PR Checklist
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  checklist:
+    name: Verify checklist is complete
+    runs-on: ubuntu-slim
+    steps:
+      - name: Check all checklist items are ticked
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          unchecked=$(echo "$PR_BODY" \
+            | awk '/^## Checklist/{p=1; next} /^## /{p=0} p' \
+            | grep -c '^\- \[ \]' || true)
+
+          if [ "$unchecked" -gt 0 ]; then
+            echo "ERROR: $unchecked checklist item(s) are not checked."
+            echo "Please tick every item in the Checklist section before requesting review."
+            exit 1
+          fi
+
+          echo "All checklist items are checked."

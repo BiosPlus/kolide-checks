@@ -1,0 +1,20 @@
+name: Example Check                    # Describes the "Passing" state (e.g. "macOS CVE-2023-23514 Patched")
+issue_title: Example Check Is Failing  # Describes the "Failing" state (e.g. "macOS Urgent Patch Required")
+description: Demonstrates the required structure for a check submission.  # Visible to Kolide admins in their check catalog; supports markdown
+rationale: |                           # Supports markdown
+  Describe why failing this Check is a problem.
+fix_instructions: |                    # Supports markdown
+  Describe how to fix this problem using clear language and steps that an
+  inexperienced user could follow successfully.
+additional_privacy_concerns: |        # Supports markdown; visible to end-users in the Privacy Center
+  Describe what private details this Check might disclose that end-users would want to know about.
+icon: https://example.com/icon.png  # Optional; URL to an image shown on the Kolide check
+platforms:
+  - macos
+  - windows
+  - linux
+author: community
+tags:
+  - example
+# dubious_tables:   # uncomment and list any dubious osquery tables used in check.sql
+#   - curl

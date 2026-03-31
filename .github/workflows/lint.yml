@@ -1,0 +1,92 @@
+name: Lint Checks
+
+on:
+  pull_request:
+    paths:
+      - 'checks/**'
+
+jobs:
+  structure:
+    name: Check structure and naming
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate check directories
+        run: |
+          errors=0
+          for dir in checks/*/; do
+            name=$(basename "$dir")
+            [ "$name" = "example-check" ] && continue
+
+            # Naming: lowercase kebab-case, no banned affixes
+            if ! echo "$name" | grep -qE '^[a-z0-9]+(-[a-z0-9]+)+$'; then
+              echo "ERROR [$name]: name must be lowercase kebab-case (e.g. filevault-enabled)"
+              errors=$((errors + 1))
+            fi
+            if echo "$name" | grep -qE '^check-|-check$|-rule$'; then
+              echo "ERROR [$name]: name must not start with 'check-' or end with '-check'/'-rule'"
+              errors=$((errors + 1))
+            fi
+
+            # Required files
+            for f in check.sql metadata.yaml; do
+              if [ ! -f "$dir$f" ]; then
+                echo "ERROR [$name]: missing required file '$f'"
+                errors=$((errors + 1))
+              fi
+            done
+
+            # No extra files (self-contained)
+            for f in "$dir"*; do
+              fname=$(basename "$f")
+              case "$fname" in
+                check.sql|metadata.yaml) ;;
+                *) echo "ERROR [$name]: unexpected file '$fname' - checks must be self-contained"
+                   errors=$((errors + 1)) ;;
+              esac
+            done
+
+            # Dubious osquery tables - allowed only if declared in metadata.yaml
+            if [ -f "${dir}check.sql" ] && [ -f "${dir}metadata.yaml" ]; then
+              for table in asl carves dns_cache running_apps example kolide_app_icons kolide_program_icons kolide_airport_util kolide_wifi_networks kolide_nmcli_wifi windows_eventlog shell_history process_envs quicklook_cache curl curl_certificate; do
+                if grep -qiE "\b${table}\b" "${dir}check.sql"; then
+                  if ! yq e '.dubious_tables[]' "${dir}metadata.yaml" 2>/dev/null | grep -qx "$table"; then
+                    echo "ERROR [$name]: check.sql uses dubious osquery table '$table' but it is not declared in metadata.yaml under 'dubious_tables'"
+                    errors=$((errors + 1))
+                  else
+                    echo "WARN  [$name]: check.sql uses dubious osquery table '$table' (declared in metadata.yaml)"
+                  fi
+                fi
+              done
+            fi
+          done
+
+          [ $errors -eq 0 ] && echo "All checks passed." || exit 1
+
+  yaml:
+    name: Lint metadata.yaml files
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: checks
+          config_data: |
+            extends: default
+            rules:
+              line-length: disable
+
+  sql:
+    name: Lint check.sql files
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install sqlfluff
+        run: pip install sqlfluff
+
+      - name: Lint SQL
+        run: |
+          find checks -name check.sql ! -path '*/example-check/*' \
+            -exec sqlfluff lint {} +
