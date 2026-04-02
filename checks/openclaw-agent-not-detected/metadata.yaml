@@ -1,0 +1,33 @@
+name: openclaw-agent-not-detected
+issue_title: OpenClaw Agent Detected
+description: Detects the presence of OpenClaw agent artifacts on macOS, including the app bundle, configuration directories, LaunchAgent plists, running processes, and installed binaries.
+rationale: |
+  OpenClaw is an agentic AI tool that runs persistently on a device and can take autonomous actions on behalf of a user. Its presence may represent an unmanaged or unauthorized AI agent with broad system access, posing potential security and data privacy risks. Organizations should be aware of and control which AI agents are permitted to operate on managed devices.
+fix_instructions: |
+  To remove OpenClaw from your device:
+
+  1. Quit any running OpenClaw processes via Activity Monitor or `killall openclaw`.
+  2. Unload and remove any LaunchAgent plists:
+     ```
+     launchctl unload ~/Library/LaunchAgents/bot.molt.gateway.plist
+     rm ~/Library/LaunchAgents/bot.molt.*.plist
+     rm ~/Library/LaunchAgents/com.openclaw.*.plist
+     ```
+  3. Delete the application: move `/Applications/OpenClaw.app` to Trash.
+  4. Remove configuration directories:
+     ```
+     rm -rf ~/.openclaw ~/.openclaw-*
+     ```
+  5. Uninstall the CLI binary if present:
+     ```
+     npm uninstall -g openclaw
+     rm -f /usr/local/bin/openclaw /opt/homebrew/bin/openclaw
+     ```
+  6. Contact your IT administrator if you need OpenClaw for work purposes and require an exception.
+additional_privacy_concerns: |
+  This check scans file paths in your home directory, LaunchAgents folder, and system binary locations to detect OpenClaw artifacts. It also inspects running process names and command-line arguments. No file contents are read.
+platforms:
+  - macos
+author: biosplus
+tags:
+  - security
